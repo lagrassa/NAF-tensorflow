@@ -4,7 +4,6 @@ logger = getLogger(__name__)
 import numpy as np
 import tensorflow as tf
 
-from .utils import get_timestamp
 
 class NAF(object):
   def __init__(self, sess,
@@ -208,3 +207,10 @@ class NAF(object):
         % (np.mean(q), np.mean(v), np.mean(a), np.mean(l)))
 
     return np.sum(q_list), np.sum(v_list), np.sum(a_list), np.sum(l_list)
+#didn't want to deal with import issues
+import datetime
+import dateutil.tz
+
+def get_timestamp():
+  now = datetime.datetime.now(dateutil.tz.tzlocal())
+  return now.strftime('%Y_%m_%d_%H_%M_%S')
