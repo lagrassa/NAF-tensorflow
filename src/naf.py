@@ -3,7 +3,6 @@ logger = getLogger(__name__)
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.framework import get_variables
 
 from .utils import get_timestamp
 
@@ -47,18 +46,28 @@ class NAF(object):
     if monitor:
       self.env.monitor.start('/tmp/%s-%s' % (self.stat.env_name, get_timestamp()))
 
-    for self.idx_episode in xrange(self.max_episodes):
+    rewards = []
+    for self.idx_episode in range(self.max_episodes):
       state = self.env.reset()
 
-      for t in xrange(0, self.max_steps):
+      for t in range(0, self.max_steps):
         if display: self.env.render()
 
         # 1. predict
+        if state.shape[0] == 1:
+            state=state[0]
         action = self.predict(state)
 
         # 2. step
         self.prestates.append(state)
-        state, reward, terminal, _ = self.env.step(action)
+        input_action = action
+        if action.shape == (1,):
+            input_action = action.reshape(1,1)
+        state, reward, terminal, _ = self.env.step(input_action)
+        reward = reward[0]
+        terminal = terminal[0] 
+        if state.shape[0] == 1:
+            state=state[0]
         self.poststates.append(state)
 
         terminal = True if t == self.max_steps - 1 else terminal
@@ -73,9 +82,13 @@ class NAF(object):
         if terminal:
           self.strategy.reset()
           break
+      rewards.append(reward)
+    success_rate = np.mean(np.array(rewards) >= 0)
+
 
     if monitor:
       self.env.monitor.close()
+    return None, success_rate
 
   def run2(self, monitor=False, display=False, is_train=True):
     target_y = tf.placeholder(tf.float32, [None], name='target_y')
@@ -95,11 +108,11 @@ class NAF(object):
 
     # the main learning loop
     total_reward = 0
-    for i_episode in xrange(self.max_episodes):
+    for i_episode in range(self.max_episodes):
       observation = self.env.reset()
       episode_reward = 0
 
-      for t in xrange(self.max_steps):
+      for t in range(self.max_steps):
         if display:
           self.env.render()
 
@@ -119,7 +132,7 @@ class NAF(object):
 
         if len(prestates) > 10:
           loss_ = 0
-          for k in xrange(self.update_repeat):
+          for k in range(self.update_repeat):
             if len(prestates) > self.batch_size:
               indexes = np.random.choice(len(prestates), size=self.batch_size)
             else:
@@ -137,11 +150,11 @@ class NAF(object):
         if done:
           break
 
-      print "average loss:", loss_/k
-      print "Episode {} finished after {} timesteps, reward {}".format(i_episode + 1, t + 1, episode_reward)
+      print("average loss:", loss_/k)
+      print("Episode {} finished after {} timesteps, reward {}".format(i_episode + 1, t + 1, episode_reward))
       total_reward += episode_reward
 
-    print "Average reward per episode {}".format(total_reward / self.episodes)
+    print("Average reward per episode {}".format(total_reward / self.episodes))
 
   def predict(self, state):
     u = self.pred_network.predict([state])[0]
@@ -159,8 +172,8 @@ class NAF(object):
     v_list = []
     a_list = []
     l_list = []
-
-    for iteration in xrange(self.update_repeat):
+    
+    for iteration in range(self.update_repeat):
       if len(self.rewards) >= self.batch_size:
         indexes = np.random.choice(len(self.rewards), size=self.batch_size)
       else:

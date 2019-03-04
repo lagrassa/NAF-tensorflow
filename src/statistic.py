@@ -95,7 +95,7 @@ class Statistic(object):
 
   def load_model(self):
     logger.info("Loading checkpoints...")
-    tf.initialize_all_variables().run()
+    tf.global_variables_initializer().run(session=self.sess)
 
     ckpt = tf.train.get_checkpoint_state(self.model_dir)
     if ckpt and ckpt.model_checkpoint_path:

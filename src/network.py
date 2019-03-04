@@ -51,14 +51,14 @@ class Network:
                hidden_w, use_batch_norm=use_batch_norm, scope='V')
 
       with tf.name_scope('advantage'):
-        l = fc(hid_outs['l'], (action_size * (action_size + 1))/2, is_train, hidden_w,
+        l = fc(hid_outs['l'], (action_size * (action_size + 1))//2, is_train, hidden_w,
                use_batch_norm=use_batch_norm, scope='l')
         mu = fc(hid_outs['mu'], action_size, is_train, action_w,
                 activation_fn=action_fn, use_batch_norm=use_batch_norm, scope='mu')
 
         pivot = 0
         rows = []
-        for idx in xrange(action_size):
+        for idx in range(action_size):
           count = action_size - idx
 
           diag_elem = tf.exp(tf.slice(l, (0, pivot), (-1, 1)))
