@@ -4,7 +4,7 @@ logger = getLogger(__name__)
 import tensorflow as tf
 from tensorflow.contrib.framework import get_variables
 
-from .ops import *
+from ops import *
 
 class Network:
   def __init__(self, sess, input_shape, action_size, hidden_dims,

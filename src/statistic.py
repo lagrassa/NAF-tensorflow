@@ -19,7 +19,7 @@ class Statistic(object):
       self.t_add_op = self.t_op.assign_add(1)
 
     self.model_dir = model_dir
-    self.saver = tf.train.Saver(variables + [self.t_op], max_to_keep=max_to_keep)
+    #self.saver = tf.train.Saver(variables + [self.t_op], max_to_keep=max_to_keep)
     self.writer = tf.summary.FileWriter('./logs/%s' % self.model_dir, self.sess.graph)
 
     with tf.variable_scope('summary'):
@@ -91,7 +91,7 @@ class Statistic(object):
 
     if not os.path.exists(self.model_dir):
       os.makedirs(self.model_dir)
-    self.saver.save(self.sess, self.model_dir, global_step=t)
+    #self.saver.save(self.sess, self.model_dir, global_step=t)
 
   def load_model(self):
     logger.info("Loading checkpoints...")
@@ -101,7 +101,7 @@ class Statistic(object):
     if ckpt and ckpt.model_checkpoint_path:
       ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
       fname = os.path.join(self.model_dir, ckpt_name)
-      self.saver.restore(self.sess, fname)
+      #self.saver.restore(self.sess, fname)
       logger.info("Load SUCCESS: %s" % fname)
     else:
       logger.info("Load FAILED: %s" % self.model_dir)
