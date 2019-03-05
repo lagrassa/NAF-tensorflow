@@ -1,4 +1,5 @@
 import os
+import absl
 import pprint
 import tensorflow as tf
 from network import *
@@ -33,6 +34,8 @@ def preprocess_conf(conf):
   options = conf.__flags
 
   for option, value in options.items():
+      if isinstance(value, absl.flags._flag.Flag):
+          value = value.value
     option = option.lower()
     #value = value.value
 
