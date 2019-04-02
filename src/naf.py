@@ -31,22 +31,25 @@ class NAF(object):
     self.rewards = []
     self.poststates = []
     self.terminals = []
+    
+
 
     with tf.name_scope('optimizer'):
       self.target_y = tf.placeholder(tf.float32, [None], name='target_y')
       self.loss = tf.reduce_mean(tf.squared_difference(self.target_y, tf.squeeze(self.pred_network.Q)), name='loss')
 
       self.optim = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
-
-  def run(self, monitor=False, display=False, is_train=True):
     self.stat.load_model()
     self.target_network.hard_copy_from(self.pred_network)
 
-    if monitor:
-      self.env.monitor.start('/tmp/%s-%s' % (self.stat.env_name, get_timestamp()))
+  def run(self, monitor=False, display=False, is_train=True):
 
     rewards = []
-    for self.idx_episode in range(self.max_episodes):
+    if is_train:
+        max_episodes = self.max_episodes
+    else:
+        max_episodes = 1
+    for self.idx_episode in range(max_episodes):
       state = self.env.reset()
 
       for t in range(0, self.max_steps):
@@ -85,8 +88,6 @@ class NAF(object):
     success_rate = np.mean(np.array(rewards) >= 0)
 
 
-    if monitor:
-      self.env.monitor.close()
     return None, success_rate
 
   def run2(self, monitor=False, display=False, is_train=True):
@@ -128,30 +129,31 @@ class NAF(object):
         episode_reward += reward
 
         rewards.append(reward); poststates.append(observation); terminals.append(done)
-
-        if len(prestates) > 10:
-          loss_ = 0
-          for k in range(self.update_repeat):
-            if len(prestates) > self.batch_size:
-              indexes = np.random.choice(len(prestates), size=self.batch_size)
-            else:
-              indexes = range(len(prestates))
-
-            # Q-update
-            v_ = self.target_network.V.eval({self.target_network.x: np.array(poststates)[indexes]})
-            y_ = np.array(rewards)[indexes] + self.discount * np.squeeze(v_)
-
-            tmp1, tmp2 = np.array(prestates)[indexes], np.array(actions)[indexes]
-            loss_ += l_
-
-            self.target_network.soft_update_from(self.pred_network)
-
         if done:
           break
 
       print("average loss:", loss_/k)
       print("Episode {} finished after {} timesteps, reward {}".format(i_episode + 1, t + 1, episode_reward))
       total_reward += episode_reward
+
+    if len(prestates) > 10:
+      loss_ = 0
+      for k in range(self.update_repeat):
+        if len(prestates) > self.batch_size:
+          indexes = np.random.choice(len(prestates), size=self.batch_size)
+        else:
+          indexes = range(len(prestates))
+
+        # Q-update
+        v_ = self.target_network.V.eval({self.target_network.x: np.array(poststates)[indexes]})
+        y_ = np.array(rewards)[indexes] + self.discount * np.squeeze(v_)
+
+        tmp1, tmp2 = np.array(prestates)[indexes], np.array(actions)[indexes]
+        loss_ += l_
+
+        self.target_network.soft_update_from(self.pred_network)
+
+
 
     print("Average reward per episode {}".format(total_reward / self.episodes))
 
