@@ -11,7 +11,7 @@ from statistic import Statistic
 from exploration import OUExploration, BrownianExploration, LinearDecayExploration
 from utils import get_model_dir, preprocess_conf
 
-def setup_flags(use_batch_norm=None, learning_rate=None, noise_scale=None, env_name=None, batch_size=None, n_episodes=None, n_steps_per_episode=None):
+def setup_flags(use_batch_norm=False, learning_rate=1e-3, noise_scale=0.3, env_name="Pusher-v1", batch_size=100, n_episodes=1, n_steps_per_episode=50, seed=17):
     flags = tf.app.flags
 
     # environment
@@ -36,21 +36,20 @@ def setup_flags(use_batch_norm=None, learning_rate=None, noise_scale=None, env_n
     flags.DEFINE_float('tau', 0.01, 'tau of soft target update')
     flags.DEFINE_float('discount', 0.99, 'discount factor of Q-learning')
     flags.DEFINE_float('learning_rate', learning_rate, 'value of learning rate')
-    flags.DEFINE_integer('batch_size', batch_size, 'The size of batch for minibatch training')
+    flags.DEFINE_integer('batch_size', int(batch_size), 'The size of batch for minibatch training')
     flags.DEFINE_integer('max_steps', n_steps_per_episode, 'maximum # of steps for each episode')
     flags.DEFINE_integer('update_repeat', 2, 'maximum # of q-learning updates for each step')
     flags.DEFINE_integer('max_episodes', n_episodes, 'maximum # of episodes to train')
 
     # Debug
     flags.DEFINE_boolean('is_train', True, 'training or testing')
-    flags.DEFINE_integer('random_seed', 123, 'random seed')
+    flags.DEFINE_integer('random_seed', int(seed), 'random seed')
     flags.DEFINE_boolean('monitor', False, 'monitor the training or not')
     flags.DEFINE_boolean('display', False, 'display the game screen or not')
     flags.DEFINE_string('log_level', 'WARNING', 'log level [DEBUG, INFO, WARNING, ERROR, CRITICAL]')
 
     #custom
     conf = flags.FLAGS
-
     # set random seed
     tf.set_random_seed(conf.random_seed)
     np.random.seed(conf.random_seed)
@@ -61,8 +60,8 @@ def setup_flags(use_batch_norm=None, learning_rate=None, noise_scale=None, env_n
     return conf, logger
 
 
-def learn_setup(use_batch_norm=None, learning_rate=None, noise_scale=None, env_name =None, env=None,  batch_size=None, n_steps_per_episode=None, n_episodes=None ):
-  conf, logger = setup_flags(use_batch_norm=use_batch_norm, learning_rate=learning_rate, noise_scale=noise_scale, env_name=env_name, n_steps_per_episode=n_steps_per_episode, n_episodes=n_episodes, batch_size=batch_size)
+def learn_setup(use_batch_norm=None, learning_rate=None, noise_scale=None, env_name =None, env=None,  batch_size=None, n_steps_per_episode=None, n_episodes=None, im_rollouts=None, seed=None):
+  conf, logger = setup_flags(use_batch_norm=use_batch_norm, learning_rate=learning_rate, noise_scale=noise_scale, env_name=env_name, n_steps_per_episode=n_steps_per_episode, n_episodes=n_episodes, batch_size=batch_size, seed=seed)
   model_dir = get_model_dir(conf,
       ['is_train', 'random_seed', 'monitor', 'display', 'log_level'])
   preprocess_conf(conf)
@@ -70,8 +69,10 @@ def learn_setup(use_batch_norm=None, learning_rate=None, noise_scale=None, env_n
       #env = gym.make(env_name)
       env = make_vec_env(env_name, "mujoco", 1, None, reward_scale=1.0, flatten_dict_observations=True)
 
+  config = tf.ConfigProto()
+  config.gpu_options.allow_growth = True
       
-  sess = tf.Session()
+  sess = tf.Session(config=config)
   # environment
   #env.seed(conf.random_seed)
   assert isinstance(env.observation_space, gym.spaces.Box), \
@@ -118,19 +119,21 @@ def learn_setup(use_batch_norm=None, learning_rate=None, noise_scale=None, env_n
 
   agent = NAF(sess, env, strategy, pred_network, target_network, stat,
                 conf.discount, conf.batch_size, conf.learning_rate,
-                conf.max_steps, conf.update_repeat, conf.max_episodes)
+                conf.max_steps, conf.update_repeat, conf.max_episodes, im_rollouts=im_rollouts)
   local_variables = {'agent':agent, 'conf':conf}
   return local_variables
 
 def learn_iter(agent=None, conf=None, update=None):
-    return agent.run(conf.monitor, conf.display, conf.is_train)
+    return agent.run(conf.monitor, conf.display, conf.is_train, first = update > 0)
 
-def learn_test(agent=None, conf=None, update=None):
-    return agent.run(conf.monitor, conf.display, False)
+def learn_test(agent=None, conf=None, update=None, n_episodes=None, n_steps_per_iter=None):
+    return agent.run(conf.monitor, conf.display, is_train=False, first=False, n_episodes=n_episodes)[1]
 
 def main(_):
-    local_variables = learn_setup(env_name='FetchPush-v1')
-    learn_iter(**local_variables)
+    local_variables = learn_setup(env_name='Reacher-v2', use_batch_norm=False, learning_rate=1e-3, noise_scale=0.3,  batch_size=100, n_episodes=100, n_steps_per_episode=50, seed=17)
+    for i in range(100):
+        local_variables["update"] = i
+        learn_iter(**local_variables)
 
 if __name__ == '__main__':
   tf.app.run()

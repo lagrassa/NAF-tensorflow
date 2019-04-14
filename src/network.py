@@ -26,6 +26,7 @@ class Network:
             with tf.variable_scope(scope):
               if use_batch_norm:
                 h = batch_norm(x, is_training=is_train)
+                sess.run(tf.global_variables_initializer())
               else:
                 h = x
 
@@ -38,6 +39,7 @@ class Network:
 
           if use_batch_norm:
             h = batch_norm(x, is_training=is_train)
+            sess.run(tf.global_variables_initializer())
           else:
             h = x
 
@@ -84,6 +86,8 @@ class Network:
 
     self.is_train = is_train
     self.variables = get_variables(scope)
+    sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
 
     self.x, self.u, self.mu, self.V, self.Q, self.P, self.A = x, u, mu, V, Q, P, A
 

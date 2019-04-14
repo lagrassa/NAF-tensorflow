@@ -146,4 +146,5 @@ def batch_norm(inputs,
     outputs = tf.cond(is_training, lambda: outputs, lambda: test_outputs)
     outputs.set_shape(inputs_shape)
 
+
     return utils.collect_named_outputs(outputs_collections, sc.name, outputs)

@@ -34,8 +34,8 @@ def preprocess_conf(conf):
   options = conf.__flags
 
   for option, value in options.items():
-      if isinstance(value, absl.flags._flag.Flag):
-          value = value.value
+    if isinstance(value, absl.flags._flag.Flag):
+      value = value.value
     option = option.lower()
     #value = value.value
 
